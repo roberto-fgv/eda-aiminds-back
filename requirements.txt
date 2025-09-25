@@ -1,0 +1,8 @@
+langchain
+pandas
+supabase
+openai
+pytest
+python-dotenv
+psycopg[binary]
+requests
