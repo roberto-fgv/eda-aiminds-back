@@ -1,0 +1,12 @@
+semantic_search_langchain/
+.env
+*.pyc
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+/.venv/
+.pytest_cache/
+.mypy_cache/
+dist/
+build/
