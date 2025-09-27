@@ -28,7 +28,7 @@ create table if not exists public.metadata (
 );
 
 -- Índices para buscas vetoriais e JSONB
-create index if not exists idx_embeddings_embedding_hnsw on public.embeddings using hnsw (embedding);
+create index if not exists idx_embeddings_embedding_hnsw on public.embeddings using hnsw (embedding vector_cosine_ops);
 create index if not exists idx_embeddings_metadata_gin on public.embeddings using gin (metadata);
 create index if not exists idx_chunks_metadata_gin on public.chunks using gin (metadata);
 create index if not exists idx_metadata_value_gin on public.metadata using gin (value);
