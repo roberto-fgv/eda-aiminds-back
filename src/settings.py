@@ -17,10 +17,20 @@ SUPABASE_URL: str | None = os.getenv("SUPABASE_URL")
 SUPABASE_KEY: str | None = os.getenv("SUPABASE_KEY")
 OPENAI_API_KEY: str | None = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY: str | None = os.getenv("GOOGLE_API_KEY")
+XAI_API_KEY: str | None = os.getenv("XAI_API_KEY")  # Nova API key para Grok
+GROQ_API_KEY: str | None = os.getenv("GROQ_API_KEY")  # Nova API key para Groq
 LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
 SONAR_API_KEY: str | None = os.getenv("SONAR_API_KEY")
 SONAR_API_BASE: str = os.getenv("SONAR_API_BASE", "https://api.perplexity.ai")
 SONAR_DEFAULT_MODEL: str = os.getenv("SONAR_DEFAULT_MODEL", "sonar-pro")
+
+# Configurações LLM Provider
+DEFAULT_LLM_PROVIDER: str = os.getenv("DEFAULT_LLM_PROVIDER", "google_gemini")
+DEFAULT_GOOGLE_MODEL: str = os.getenv("DEFAULT_GOOGLE_MODEL", "gemini-2.0-flash")
+DEFAULT_GROK_MODEL: str = os.getenv("DEFAULT_GROK_MODEL", "grok-beta")
+DEFAULT_GROQ_MODEL: str = os.getenv("DEFAULT_GROQ_MODEL", "llama-3.3-70b-versatile")
+LLM_TEMPERATURE: float = float(os.getenv("LLM_TEMPERATURE", "0.3"))
+LLM_MAX_TOKENS: int = int(os.getenv("LLM_MAX_TOKENS", "1000"))
 
 # Validações leves (opcionalmente tornar estritas em produção)
 REQUIRED_ON_RUNTIME = [
