@@ -170,3 +170,20 @@ lxml>=5.0.0
 # Para instalar com AI/ML:
 # pip install sentence-transformers langchain openai
 #
+
+# ============================================================================
+# API REST DEPENDENCIES - Dependências para API FastAPI
+# ============================================================================
+
+# FastAPI e servidor web
+fastapi==0.115.6
+uvicorn[standard]==0.33.0
+python-multipart==0.0.17
+
+# Middleware e utilitários da API
+slowapi==0.1.9
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+
+# Para executar a API:
+# python api_simple.py
