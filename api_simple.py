@@ -495,7 +495,7 @@ def main():
     try:
         uvicorn.run(
             "api_simple:app",
-            host="0.0.0.0", 
+            host="127.0.0.1",  # localhost para acesso no navegador
             port=8000,
             reload=True,
             log_level="info"
