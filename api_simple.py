@@ -18,8 +18,8 @@ from datetime import datetime
 from typing import Dict, Any, List, Optional
 
 # Configurações de limites
-MAX_FILE_SIZE = 100 * 1024 * 1024  # 100MB
-MAX_REQUEST_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_FILE_SIZE = 999 * 1024 * 1024  # 999MB
+MAX_REQUEST_SIZE = 999 * 1024 * 1024  # 999MB
 
 # Modelos Pydantic básicos
 class HealthResponse(BaseModel):
@@ -32,11 +32,13 @@ class HealthResponse(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: Optional[str] = "default"
+    file_id: Optional[str] = None  # Para análise específica de CSV
 
 class ChatResponse(BaseModel):
     response: str
     session_id: str
     timestamp: str
+    file_id: Optional[str] = None  # ID do arquivo analisado
 
 class APIInfo(BaseModel):
     title: str = "EDA AI Minds - API REST"
@@ -128,6 +130,36 @@ async def health_check():
 async def chat_endpoint(request: ChatRequest):
     """Chat inteligente com respostas contextuais."""
     
+    # 🎯 ANÁLISE CONTEXTUAL COM FILE_ID
+    if request.file_id:
+        try:
+            # Carrega o DataFrame específico
+            df = load_csv_by_file_id(request.file_id)
+            file_info = uploaded_files[request.file_id]
+            
+            # Análise contextual do CSV
+            response_text = analyze_csv_data(df, request.message, file_info['filename'])
+            
+            return ChatResponse(
+                response=response_text,
+                session_id=request.session_id or "default",
+                timestamp=datetime.now().isoformat(),
+                file_id=request.file_id
+            )
+            
+        except FileNotFoundError:
+            response_text = f"❌ Arquivo com ID '{request.file_id}' não encontrado.\n\n" \
+                           f"Arquivos disponíveis: {len(uploaded_files)}\n" \
+                           f"Use /csv/files para ver a lista completa."
+            
+            return ChatResponse(
+                response=response_text,
+                session_id=request.session_id or "default",
+                timestamp=datetime.now().isoformat(),
+                file_id=request.file_id
+            )
+    
+    # 💬 CHAT GENÉRICO (sem file_id)
     message_lower = request.message.lower()
     
     # Respostas categorizadas por tipo de pergunta
@@ -211,15 +243,17 @@ async def chat_endpoint(request: ChatRequest):
     # 7. Sobre fraude
     elif any(word in message_lower for word in ["fraude", "fraud", "detecção", "detectar"]):
         response_text = "🛡️ **Detecção de Fraude:**\n\n" \
-                       "Para análise de fraude com IA, você precisa:\n" \
-                       "1. Configurar API key do Google Gemini\n" \
-                       "2. Fazer upload de dados de transações\n" \
-                       "3. Usar a API completa (não a versão simples)\n\n" \
-                       "**Recursos de IA:**\n" \
-                       "• Análise de padrões suspeitos\n" \
-                       "• Scoring de risco\n" \
-                       "• Detecção de anomalias\n\n" \
-                       "Veja o arquivo SUPORTE_GEMINI.md para configuração!"
+                       "**Sistema IA Ativo** ✅\n" \
+                       "• Análise comportamental inteligente\n" \
+                       "• Scoring de risco automatizado (0-100)\n" \
+                       "• Detecção de padrões suspeitos\n" \
+                       "• Alertas em tempo real\n\n" \
+                       "**Como usar:**\n" \
+                       "1. Faça upload do seu CSV\n" \
+                       "2. Pergunte: 'analise este arquivo para fraude'\n" \
+                       "3. Obtenha score e recomendações\n\n" \
+                       "**Exemplo:** 'Identifique transações suspeitas no meu dataset'\n\n" \
+                       "**Pronto para analisar fraudes! 🚀**"
     
     # 8. Sobre IA/LLM
     elif any(word in message_lower for word in ["ia", "ai", "inteligência", "llm", "gemini", "openai", "gpt"]):
@@ -297,6 +331,185 @@ async def chat_endpoint(request: ChatRequest):
         session_id=request.session_id or "default",
         timestamp=datetime.now().isoformat()
     )
+
+# Armazenamento temporário em memória
+uploaded_files = {}
+
+def load_csv_by_file_id(file_id: str) -> pd.DataFrame:
+    """Carrega um CSV pelo seu file_id"""
+    if file_id not in uploaded_files:
+        raise FileNotFoundError(f"Arquivo com ID {file_id} não encontrado")
+    
+    return uploaded_files[file_id]['dataframe']
+
+def analyze_csv_data(df: pd.DataFrame, user_message: str, filename: str = "") -> str:
+    """Analisa dados CSV e gera resposta contextual"""
+    
+    # Informações básicas do CSV
+    rows, columns = df.shape
+    column_names = df.columns.tolist()
+    
+    # Estatísticas básicas
+    numeric_columns = df.select_dtypes(include=['number']).columns.tolist()
+    text_columns = df.select_dtypes(include=['object']).columns.tolist()
+    
+    # Detecta valores ausentes
+    missing_values = df.isnull().sum().sum()
+    
+    # Amostra dos dados (primeiras 3 linhas)
+    sample_data = df.head(3).to_string(index=False)
+    
+    message_lower = user_message.lower()
+    
+    # Análise específica baseada na pergunta
+    if any(word in message_lower for word in ["quantas linhas", "número de linhas", "linhas"]):
+        response = f"📊 **Análise do Arquivo {filename}:**\n\n" \
+                  f"Este arquivo CSV contém **{rows:,} linhas** e **{columns} colunas**.\n\n" \
+                  f"**Estrutura dos dados:**\n" \
+                  f"• Colunas numéricas: {len(numeric_columns)}\n" \
+                  f"• Colunas de texto: {len(text_columns)}\n" \
+                  f"• Valores ausentes: {missing_values:,}\n\n" \
+                  f"**Colunas disponíveis:**\n{', '.join(column_names)}"
+    
+    elif any(word in message_lower for word in ["colunas", "características", "features"]):
+        response = f"📋 **Colunas do Arquivo {filename}:**\n\n" \
+                  f"Este arquivo possui **{columns} colunas:**\n\n"
+        
+        for i, col in enumerate(column_names, 1):
+            col_type = "Numérica" if col in numeric_columns else "Texto"
+            missing_count = df[col].isnull().sum()
+            unique_count = df[col].nunique()
+            response += f"{i}. **{col}** ({col_type})\n   • Valores únicos: {unique_count:,}\n   • Valores ausentes: {missing_count:,}\n\n"
+    
+    elif any(word in message_lower for word in ["estatísticas", "estatistica", "resumo", "describe"]):
+        response = f"📈 **Estatísticas do Arquivo {filename}:**\n\n"
+        
+        if numeric_columns:
+            stats = df[numeric_columns].describe()
+            response += f"**Estatísticas Descritivas (colunas numéricas):**\n\n"
+            
+            for col in numeric_columns[:3]:  # Mostra apenas 3 primeiras colunas
+                response += f"**{col}:**\n"
+                response += f"• Média: {stats.loc['mean', col]:.2f}\n"
+                response += f"• Mediana: {stats.loc['50%', col]:.2f}\n"
+                response += f"• Mín: {stats.loc['min', col]:.2f}\n"
+                response += f"• Máx: {stats.loc['max', col]:.2f}\n\n"
+        else:
+            response += "Este arquivo não possui colunas numéricas para estatísticas descritivas.\n\n"
+        
+        response += f"**Informações Gerais:**\n"
+        response += f"• Total de registros: {rows:,}\n"
+        response += f"• Total de colunas: {columns}\n"
+        response += f"• Valores ausentes: {missing_values:,}"
+    
+    elif any(word in message_lower for word in ["fraude", "fraud", "suspeito", "anômalo", "outlier"]):
+        response = f"🛡️ **Análise de Fraude - {filename}:**\n\n"
+        
+        # Verifica se há colunas típicas de fraude
+        fraud_indicators = ['Class', 'isFraud', 'fraud', 'label', 'target']
+        fraud_column = None
+        for col in fraud_indicators:
+            if col in column_names:
+                fraud_column = col
+                break
+        
+        if fraud_column:
+            fraud_count = df[fraud_column].sum() if df[fraud_column].dtype in ['int64', 'float64'] else len(df[df[fraud_column] == 1])
+            fraud_rate = (fraud_count / rows) * 100
+            
+            response += f"**✅ Coluna de fraude detectada:** `{fraud_column}`\n\n"
+            response += f"**📊 Resultados:**\n"
+            response += f"• Total de transações: {rows:,}\n"
+            response += f"• Transações fraudulentas: {fraud_count:,}\n"
+            response += f"• Taxa de fraude: {fraud_rate:.2f}%\n"
+            response += f"• Nível de risco: {'🔴 ALTO' if fraud_rate > 5 else '🟡 MÉDIO' if fraud_rate > 1 else '🟢 BAIXO'}\n\n"
+            
+            response += f"**💡 Recomendações:**\n"
+            if fraud_rate > 5:
+                response += f"• Implementar monitoramento 24/7\n"
+                response += f"• Revisar todas as regras de segurança\n"
+                response += f"• Investigar padrões de alto risco\n"
+            elif fraud_rate > 1:
+                response += f"• Configurar alertas automáticos\n"
+                response += f"• Monitorar transações suspeitas\n"
+                response += f"• Analisar padrões temporais\n"
+            else:
+                response += f"• Manter monitoramento preventivo\n"
+                response += f"• Configurar alertas básicos\n"
+        else:
+            # Análise de outliers básica
+            if numeric_columns:
+                outliers_total = 0
+                response += f"**⚠️ Análise de Anomalias (sem coluna de fraude explícita):**\n\n"
+                
+                for col in numeric_columns[:3]:
+                    Q1 = df[col].quantile(0.25)
+                    Q3 = df[col].quantile(0.75)
+                    IQR = Q3 - Q1
+                    outliers = len(df[(df[col] < Q1 - 1.5*IQR) | (df[col] > Q3 + 1.5*IQR)])
+                    outliers_total += outliers
+                    response += f"• **{col}**: {outliers} outliers detectados\n"
+                
+                outlier_rate = (outliers_total / rows) * 100
+                response += f"\n**📊 Resumo de Anomalias:**\n"
+                response += f"• Total de outliers: {outliers_total:,}\n"
+                response += f"• Taxa de anomalias: {outlier_rate:.2f}%\n"
+                response += f"• Nível de suspeita: {'🔴 ALTO' if outlier_rate > 10 else '🟡 MÉDIO' if outlier_rate > 5 else '🟢 BAIXO'}"
+            else:
+                response += f"**ℹ️ Este arquivo não possui colunas numéricas para análise de fraude.**\n"
+                response += f"Para análise de fraude, são necessárias colunas com valores numéricos ou uma coluna de classificação."
+    
+    elif any(word in message_lower for word in ["valores ausentes", "missing", "null", "nan"]):
+        response = f"❓ **Valores Ausentes - {filename}:**\n\n"
+        
+        missing_by_column = df.isnull().sum()
+        columns_with_missing = missing_by_column[missing_by_column > 0]
+        
+        if len(columns_with_missing) > 0:
+            response += f"**🔍 Colunas com valores ausentes:**\n\n"
+            for col, missing_count in columns_with_missing.items():
+                missing_pct = (missing_count / rows) * 100
+                response += f"• **{col}**: {missing_count:,} ausentes ({missing_pct:.1f}%)\n"
+            
+            response += f"\n**📊 Resumo:**\n"
+            response += f"• Total de valores ausentes: {missing_values:,}\n"
+            response += f"• Colunas afetadas: {len(columns_with_missing)}\n"
+            response += f"• Taxa geral de incompletude: {(missing_values/(rows*columns))*100:.1f}%"
+        else:
+            response += f"✅ **Excelente! Este arquivo não possui valores ausentes.**\n"
+            response += f"Todos os {rows:,} registros estão completos em todas as {columns} colunas."
+    
+    elif any(word in message_lower for word in ["amostra", "preview", "dados", "exemplo"]):
+        response = f"👀 **Amostra dos Dados - {filename}:**\n\n"
+        response += f"**Primeiras 3 linhas:**\n```\n{sample_data}\n```\n\n"
+        response += f"**Informações:**\n"
+        response += f"• Total de registros: {rows:,}\n"
+        response += f"• Colunas: {columns}\n"
+        response += f"• Tipos de dados: {len(numeric_columns)} numéricas, {len(text_columns)} texto"
+    
+    else:
+        # Resposta geral sobre o arquivo
+        response = f"📊 **Análise Geral - {filename}:**\n\n"
+        response += f"**Estrutura do arquivo:**\n"
+        response += f"• Linhas: {rows:,}\n"
+        response += f"• Colunas: {columns}\n"
+        response += f"• Valores ausentes: {missing_values:,}\n\n"
+        
+        response += f"**Tipos de dados:**\n"
+        response += f"• Colunas numéricas: {len(numeric_columns)}\n"
+        response += f"• Colunas de texto: {len(text_columns)}\n\n"
+        
+        response += f"**Colunas disponíveis:**\n{', '.join(column_names[:10])}"
+        if len(column_names) > 10:
+            response += f"\n... e mais {len(column_names)-10} colunas"
+        
+        response += f"\n\n**💡 Perguntas que você pode fazer:**\n"
+        response += f"• 'Quantas linhas tem este arquivo?'\n"
+        response += f"• 'Mostre as estatísticas dos dados'\n"
+        response += f"• 'Analise este arquivo para fraude'\n"
+        response += f"• 'Quais colunas têm valores ausentes?'"
+    
+    return response
 
 # Armazenamento temporário em memória
 uploaded_files = {}

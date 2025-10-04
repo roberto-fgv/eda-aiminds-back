@@ -1,13 +1,56 @@
+# Repositório base de referência
 semantic_search_langchain/
+
+# Variáveis de ambiente
 .env
+configs/.env
+
+# Python cache
 *.pyc
 __pycache__/
-.ipynb_checkpoints/
-.DS_Store
-.vscode/
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
 /.venv/
+venv/
+ENV/
+env/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+
+# Testing
 .pytest_cache/
+.coverage
+htmlcov/
+.tox/
 .mypy_cache/
+
+# Build
 dist/
 build/
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Data files grandes
 data/creditcard.csv
+data/*_large.csv
+data/*_backup.csv
+
+# Outputs temporários
+outputs/
+temp_scripts/
+*.log
+
+# Backups
+*_backup.py
+*_BACKUP.*
+README_BROKEN_BACKUP.md
